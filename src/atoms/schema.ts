@@ -60,12 +60,21 @@ export function createTable(id: string, name: string, x: number, y: number): Tab
   };
 }
 
-export function createColumn(id: string, name: string, dataType: string, isPrimaryKey = false): Column {
+export function createColumn(
+  id: string,
+  name: string,
+  dataType: string,
+  isPrimaryKey = false,
+  isNullable?: boolean,
+  defaultValue?: string
+): Column {
   return {
     id,
     name,
     dataType,
     isPrimaryKey,
+    isNullable,
+    defaultValue,
   };
 }
 

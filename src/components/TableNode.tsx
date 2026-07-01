@@ -39,6 +39,7 @@ export function TableNode(props: NodeProps<TableNodeType>) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editColumns, setEditColumns] = useState<Column[]>([]);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
 
   const saveEdit = useCallback(() => {
     if (!table) return;
@@ -138,7 +139,9 @@ export function TableNode(props: NodeProps<TableNodeType>) {
       nanoid(),
       isPrimaryKey ? 'id' : 'column_name',
       isPrimaryKey ? 'INT' : 'VARCHAR',
-      isPrimaryKey
+      isPrimaryKey,
+      isPrimaryKey ? undefined : true,
+      undefined
     );
     setEditColumns([...editColumns, newColumn]);
   };
@@ -152,8 +155,42 @@ export function TableNode(props: NodeProps<TableNodeType>) {
   };
 
   const togglePrimaryKey = (column: Column) => {
-    updateColumn({ ...column, isPrimaryKey: !column.isPrimaryKey });
+    const isPrimaryKey = !column.isPrimaryKey;
+    updateColumn({
+      ...column,
+      isPrimaryKey,
+      isNullable: isPrimaryKey ? undefined : true,
+      defaultValue: isPrimaryKey ? undefined : column.defaultValue,
+    });
   };
+
+  const reorderColumns = (draggedId: string, targetId: string) => {
+    const draggedIndex = editColumns.findIndex((c) => c.id === draggedId);
+    const targetIndex = editColumns.findIndex((c) => c.id === targetId);
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const draggedColumn = editColumns[draggedIndex];
+    const targetColumn = editColumns[targetIndex];
+    if (draggedColumn.isPrimaryKey !== targetColumn.isPrimaryKey) return;
+
+    const newColumns = [...editColumns];
+    const [removed] = newColumns.splice(draggedIndex, 1);
+    newColumns.splice(targetIndex, 0, removed);
+    setEditColumns(newColumns);
+  };
+
+  const createDragHandlers = (column: Column) => ({
+    onDragStart: () => setDraggedColumnId(column.id),
+    onDragOver: (e: React.DragEvent) => e.preventDefault(),
+    onDrop: () => {
+      if (draggedColumnId && draggedColumnId !== column.id) {
+        reorderColumns(draggedColumnId, column.id);
+      }
+      setDraggedColumnId(null);
+    },
+    onDragEnd: () => setDraggedColumnId(null),
+    isDragging: draggedColumnId === column.id,
+  });
 
   const displayColumns = isEditing ? editColumns : table.columns;
   const pkColumns = displayColumns.filter((c) => c.isPrimaryKey);
@@ -259,11 +296,14 @@ export function TableNode(props: NodeProps<TableNodeType>) {
               onChange={updateColumn}
               onDelete={deleteColumn}
               onTogglePk={() => togglePrimaryKey(column)}
+              dragHandlers={createDragHandlers(column)}
             />
           ) : (
             <div key={column.id} className="table-row table-row--pk">
-              <span className="table-row-icon">🔑</span>
-              <span className="table-row-name">{column.name}</span>
+              <div className="table-row-name-cell">
+                <span className="table-row-icon">🔑</span>
+                <span className="table-row-name">{column.name}</span>
+              </div>
               <span className="table-row-type">{column.dataType}</span>
             </div>
           )
@@ -290,15 +330,26 @@ export function TableNode(props: NodeProps<TableNodeType>) {
                 onChange={updateColumn}
                 onDelete={deleteColumn}
                 onTogglePk={() => togglePrimaryKey(column)}
+                dragHandlers={createDragHandlers(column)}
               />
             );
           }
           const isFk = isForeignKeyColumn(table, column.id, relationships);
           return (
             <div key={column.id} className={`table-row ${isFk ? 'table-row--fk' : ''}`}>
-              {isFk && <span className="table-row-icon">🔗</span>}
-              <span className="table-row-name">{column.name}</span>
+              <div className="table-row-name-cell">
+                {isFk && <span className="table-row-icon">🔗</span>}
+                <span className="table-row-name">{column.name}</span>
+              </div>
               <span className="table-row-type">{column.dataType}</span>
+              {column.isNullable === false && (
+                <span className="table-row-badge table-row-badge--nn">NOT NULL</span>
+              )}
+              {column.defaultValue !== undefined && column.defaultValue !== '' && (
+                <span className="table-row-badge table-row-badge--default">
+                  DEFAULT {column.defaultValue}
+                </span>
+              )}
             </div>
           );
         })}
@@ -325,11 +376,22 @@ interface InlineColumnEditorProps {
   onChange: (column: Column) => void;
   onDelete: (id: string) => void;
   onTogglePk: () => void;
+  dragHandlers?: {
+    onDragStart: () => void;
+    onDragOver: (e: React.DragEvent) => void;
+    onDrop: (e: React.DragEvent) => void;
+    onDragEnd: (e: React.DragEvent) => void;
+    isDragging: boolean;
+  };
 }
 
-function InlineColumnEditor({ column, onChange, onDelete, onTogglePk }: InlineColumnEditorProps) {
+function InlineColumnEditor({ column, onChange, onDelete, onTogglePk, dragHandlers }: InlineColumnEditorProps) {
   return (
-    <div className="inline-column-editor">
+    <div
+      className={`inline-column-editor ${dragHandlers?.isDragging ? 'dragging' : ''}`}
+      onDragOver={dragHandlers?.onDragOver}
+      onDrop={dragHandlers?.onDrop}
+    >
       <input
         type="text"
         value={column.name}
@@ -349,6 +411,41 @@ function InlineColumnEditor({ column, onChange, onDelete, onTogglePk }: InlineCo
           <option key={type} value={type} />
         ))}
       </datalist>
+      {!column.isPrimaryKey && (
+        <>
+          <input
+            type="text"
+            value={column.defaultValue ?? ''}
+            onChange={(e) =>
+              onChange({ ...column, defaultValue: e.target.value || undefined })
+            }
+            placeholder="DEFAULT"
+            className="default-input"
+            title="DEFAULT value"
+          />
+          <select
+            value={column.isNullable === false ? 'not-null' : 'null'}
+            onChange={(e) =>
+              onChange({ ...column, isNullable: e.target.value === 'null' })
+            }
+            title="NULL / NOT NULL"
+          >
+            <option value="null">NULL</option>
+            <option value="not-null">NOT NULL</option>
+          </select>
+        </>
+      )}
+      {dragHandlers && (
+        <span
+          className="column-drag-handle"
+          draggable
+          onDragStart={dragHandlers.onDragStart}
+          onDragEnd={dragHandlers.onDragEnd}
+          title="Drag to reorder"
+        >
+          ⋮⋮
+        </span>
+      )}
       <button onClick={onTogglePk} title="Toggle primary key">
         {column.isPrimaryKey ? '🔑' : '○'}
       </button>

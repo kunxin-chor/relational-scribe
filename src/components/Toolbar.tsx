@@ -86,11 +86,11 @@ export function Toolbar() {
           placeholder="Schema name"
           className="toolbar-input"
         />
+        <button onClick={() => { if (confirm('Start a new canvas?')) clearSchema(); }}>New</button>
       </div>
 
       <div className="toolbar-group">
         <button onClick={openAddTableDialog}>+ Table</button>
-        <button onClick={() => { if (confirm('Start a new canvas?')) clearSchema(); }}>New</button>
         <button onClick={handleSave}>Save</button>
         <button onClick={handleDownload}>Download JSON</button>
         <button onClick={handleUploadClick}>Upload JSON</button>

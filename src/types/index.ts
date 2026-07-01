@@ -3,6 +3,8 @@ export interface Column {
   name: string;
   dataType: string;
   isPrimaryKey: boolean;
+  isNullable?: boolean;
+  defaultValue?: string;
 }
 
 export interface Table {
