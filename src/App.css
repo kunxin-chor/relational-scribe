@@ -149,7 +149,7 @@
 
 .table-row {
   display: grid;
-  grid-template-columns: 1fr 120px auto;
+  grid-template-columns: 1fr 120px 120px;
   gap: 8px;
   align-items: center;
   padding: 5px 12px;
@@ -187,6 +187,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.table-row-badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .table-row-badge {
