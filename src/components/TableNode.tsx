@@ -342,16 +342,21 @@ export function TableNode(props: NodeProps<TableNodeType>) {
                 <span className="table-row-name">{column.name}</span>
               </div>
               <span className="table-row-type">{column.dataType}</span>
-              <div className="table-row-badges">
-                {column.isNullable === false && (
-                  <span className="table-row-badge table-row-badge--nn">NOT NULL</span>
-                )}
-                {column.defaultValue !== undefined && column.defaultValue !== '' && (
-                  <span className="table-row-badge table-row-badge--default">
-                    DEFAULT {column.defaultValue}
-                  </span>
-                )}
-              </div>
+              {column.isNullable === false ? (
+                <span className="table-row-badge table-row-badge--nn">NOT NULL</span>
+              ) : (
+                <span />
+              )}
+              {column.defaultValue !== undefined && column.defaultValue !== '' ? (
+                <span
+                  className="table-row-badge table-row-badge--default"
+                  title={`DEFAULT ${column.defaultValue}`}
+                >
+                  DEFAULT {column.defaultValue}
+                </span>
+              ) : (
+                <span />
+              )}
             </div>
           );
         })}

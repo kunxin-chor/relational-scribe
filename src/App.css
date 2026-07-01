@@ -61,7 +61,7 @@
 
 /* Table Node */
 .table-node {
-  min-width: 320px;
+  min-width: 340px;
   background: #ffffff;
   border: 1px solid #94a3b8;
   border-radius: 8px;
@@ -149,7 +149,7 @@
 
 .table-row {
   display: grid;
-  grid-template-columns: 1fr 120px 120px;
+  grid-template-columns: 1fr 120px 80px 80px;
   gap: 8px;
   align-items: center;
   padding: 5px 12px;
@@ -189,19 +189,15 @@
   white-space: nowrap;
 }
 
-.table-row-badges {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
 .table-row-badge {
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 4px;
   white-space: nowrap;
+  justify-self: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .table-row-badge--nn {
