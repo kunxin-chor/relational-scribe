@@ -1,20 +1,16 @@
 import { useRef, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { schemaAtom, schemaNameAtom, loadSchemaAtom, clearSchemaAtom } from '../atoms/schema';
-import { addTableCallbackAtom } from '../atoms/ui';
+import { addTableCallbackAtom, exportPngCallbackAtom } from '../atoms/ui';
 import { saveCurrent, saveSnapshot, downloadJson, readJsonFile } from '../utils/storage';
-import { exportPng } from '../utils/export';
 
-interface ToolbarProps {
-  flowRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export function Toolbar({ flowRef }: ToolbarProps) {
+export function Toolbar() {
   const [schemaName, setSchemaName] = useAtom(schemaNameAtom);
   const schema = useAtomValue(schemaAtom);
   const [, loadSchema] = useAtom(loadSchemaAtom);
   const [, clearSchema] = useAtom(clearSchemaAtom);
   const addTableCallback = useAtomValue(addTableCallbackAtom);
+  const exportPngCallback = useAtomValue(exportPngCallbackAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,9 +68,9 @@ export function Toolbar({ flowRef }: ToolbarProps) {
   };
 
   const handleExportPng = async () => {
-    if (!flowRef.current) return;
+    if (!exportPngCallback) return;
     try {
-      await exportPng(flowRef.current, schemaName || 'schema');
+      await exportPngCallback(schemaName || 'schema');
     } catch {
       alert('Failed to export PNG');
     }

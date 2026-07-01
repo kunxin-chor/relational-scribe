@@ -20,8 +20,9 @@ import {
   ConnectionLineType,
 } from '@xyflow/react';
 import { nanoid } from 'nanoid';
+import { toPng } from 'html-to-image';
 import { tablesAtom, relationshipsAtom, createRelationship, createTable } from '../atoms/schema';
-import { selectedTableIdAtom, mappingRelationshipAtom, addTableCallbackAtom, editingNodeIdAtom } from '../atoms/ui';
+import { selectedTableIdAtom, mappingRelationshipAtom, addTableCallbackAtom, editingNodeIdAtom, exportPngCallbackAtom } from '../atoms/ui';
 import type { Relationship, Table } from '../types';
 import { TableNode } from './TableNode';
 import { DeletableEdge } from './DeletableEdge';
@@ -61,8 +62,9 @@ function Flow() {
   const setSelectedTableId = useSetAtom(selectedTableIdAtom);
   const setMappingRelationship = useSetAtom(mappingRelationshipAtom);
   const setAddTableCallback = useSetAtom(addTableCallbackAtom);
+  const setExportPngCallback = useSetAtom(exportPngCallbackAtom);
   const editingNodeId = useAtomValue(editingNodeIdAtom);
-  const { fitView, getViewport } = useReactFlow();
+  const { fitView, getViewport, setViewport } = useReactFlow();
   const flowWrapperRef = useRef<HTMLDivElement>(null);
 
   const [nodes, setNodes] = useState<Node[]>(() => tables.map(buildNode));
@@ -125,6 +127,48 @@ function Flow() {
   useEffect(() => {
     setAddTableCallback(() => addTableAtCenter);
   }, [addTableAtCenter, setAddTableCallback]);
+
+  const exportPng = useCallback(
+    async (filename: string) => {
+      if (!flowWrapperRef.current) return;
+      const reactFlowEl = flowWrapperRef.current.querySelector(
+        '.react-flow'
+      ) as HTMLElement | null;
+      if (!reactFlowEl) throw new Error('React Flow container not found');
+
+      const panels = Array.from(
+        reactFlowEl.querySelectorAll('.react-flow__panel')
+      ) as HTMLElement[];
+      panels.forEach((panel) => {
+        panel.style.visibility = 'hidden';
+      });
+
+      const prevViewport = getViewport();
+      try {
+        await fitView({ padding: 0.1, duration: 0 });
+        const dataUrl = await toPng(reactFlowEl, {
+          backgroundColor: '#f8f9fa',
+          pixelRatio: 2,
+        });
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `${filename}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } finally {
+        await setViewport(prevViewport, { duration: 0 });
+        panels.forEach((panel) => {
+          panel.style.visibility = '';
+        });
+      }
+    },
+    [fitView, getViewport, setViewport]
+  );
+
+  useEffect(() => {
+    setExportPngCallback(() => exportPng);
+  }, [exportPng, setExportPngCallback]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {

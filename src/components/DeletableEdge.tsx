@@ -29,42 +29,46 @@ function getSmartOrthogonalPath(
   const sc = { x: sourceRect.x + sourceRect.width / 2, y: sourceRect.y + sourceRect.height / 2 };
   const tc = { x: targetRect.x + targetRect.width / 2, y: targetRect.y + targetRect.height / 2 };
 
-  const dx = tc.x - sc.x;
-  const dy = tc.y - sc.y;
-
-  const STRAIGHT_MARGIN = 40;
-
   let sp: { x: number; y: number };
   let tp: { x: number; y: number };
   let mid1: { x: number; y: number } | null = null;
   let mid2: { x: number; y: number } | null = null;
 
+  const dx = tc.x - sc.x;
+  const dy = tc.y - sc.y;
+
   if (Math.abs(dx) >= Math.abs(dy)) {
-    // Horizontal-first routing: horizontal → vertical → horizontal.
+    // Horizontal routing: source right/left edge to target left/right edge.
     if (dx >= 0) {
       sp = { x: sourceRect.x + sourceRect.width, y: sc.y };
-      tp = { x: targetRect.x, y: tc.y };
+      tp = { x: targetRect.x, y: sc.y };
     } else {
       sp = { x: sourceRect.x, y: sc.y };
-      tp = { x: targetRect.x + targetRect.width, y: tc.y };
+      tp = { x: targetRect.x + targetRect.width, y: sc.y };
     }
 
-    if (Math.abs(dy) > STRAIGHT_MARGIN) {
+    if (sc.y < targetRect.y || sc.y > targetRect.y + targetRect.height) {
+      // Source centre misses the target edge, so anchor to the target edge
+      // centre and route through a midpoint between the two edges.
+      tp = { x: tp.x, y: tc.y };
       const midX = (sp.x + tp.x) / 2;
       mid1 = { x: midX, y: sp.y };
       mid2 = { x: midX, y: tp.y };
     }
   } else {
-    // Vertical-first routing: vertical → horizontal → vertical.
+    // Vertical routing: source bottom/top edge to target top/bottom edge.
     if (dy >= 0) {
       sp = { x: sc.x, y: sourceRect.y + sourceRect.height };
-      tp = { x: tc.x, y: targetRect.y };
+      tp = { x: sc.x, y: targetRect.y };
     } else {
       sp = { x: sc.x, y: sourceRect.y };
-      tp = { x: tc.x, y: targetRect.y + targetRect.height };
+      tp = { x: sc.x, y: targetRect.y + targetRect.height };
     }
 
-    if (Math.abs(dx) > STRAIGHT_MARGIN) {
+    if (sc.x < targetRect.x || sc.x > targetRect.x + targetRect.width) {
+      // Source centre misses the target edge, so anchor to the target edge
+      // centre and route through a midpoint between the two edges.
+      tp = { x: tc.x, y: tp.y };
       const midY = (sp.y + tp.y) / 2;
       mid1 = { x: sp.x, y: midY };
       mid2 = { x: tp.x, y: midY };
