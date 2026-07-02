@@ -162,6 +162,11 @@
 
 .table-row--fk {
   background: #fef3c7;
+  cursor: pointer;
+}
+
+.table-row--fk:hover {
+  background: #fde68a;
 }
 
 .table-row-icon {

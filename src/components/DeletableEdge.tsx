@@ -1,10 +1,11 @@
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import {
   EdgeLabelRenderer,
   type EdgeProps,
   useInternalNode,
 } from '@xyflow/react';
-import { relationshipsAtom } from '../atoms/schema';
+import { relationshipsAtom, tablesAtom } from '../atoms/schema';
+import { highlightedRelationshipIdsAtom } from '../atoms/ui';
 
 interface Rect {
   x: number;
@@ -83,10 +84,26 @@ function getSmartOrthogonalPath(
 }
 
 export function DeletableEdge(props: EdgeProps) {
-  const { id, source, target, selected, markerEnd } = props;
+  const { id, source, target, selected } = props;
   const [, setRelationships] = useAtom(relationshipsAtom);
+  const highlightedRelationshipIds = useAtomValue(highlightedRelationshipIdsAtom);
+  const relationships = useAtomValue(relationshipsAtom);
+  const tables = useAtomValue(tablesAtom);
+  const isHighlighted = highlightedRelationshipIds.includes(id);
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
+
+  const relationship = relationships.find((r) => r.id === id);
+  const sourceTable = tables.find((t) => t.id === source);
+  const sourceFkColumns =
+    relationship?.mappings
+      .map((m) => sourceTable?.columns.find((c) => c.id === m.sourceColumnId))
+      .filter((c): c is NonNullable<typeof c> => c != null) ?? [];
+
+  const isIdentifying =
+    sourceFkColumns.length > 0 && sourceFkColumns.every((c) => c.isPrimaryKey);
+  const isOptional =
+    sourceFkColumns.length > 0 && sourceFkColumns.some((c) => c.isNullable !== false);
 
   const sourceRect = getNodeRect(sourceNode);
   const targetRect = getNodeRect(targetNode);
@@ -102,18 +119,59 @@ export function DeletableEdge(props: EdgeProps) {
 
   if (!path) return null;
 
+  const color = selected ? '#3b82f6' : isHighlighted ? '#f59e0b' : '#64748b';
+  const strokeWidth = selected ? 4 : isHighlighted ? 4 : 3;
+  const childMarkerId = `fk-child-marker-${id}`;
+  const parentMarkerId = `fk-parent-marker-${id}`;
+  const showParentMarker = !isIdentifying && isOptional;
+
   return (
     <>
+      <defs>
+        <marker
+          id={childMarkerId}
+          markerWidth="10"
+          markerHeight="10"
+          refX="5"
+          refY="5"
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <circle cx="5" cy="5" r="3" fill={color} />
+        </marker>
+        {showParentMarker && (
+          <marker
+            id={parentMarkerId}
+            markerWidth="12"
+            markerHeight="12"
+            refX="6"
+            refY="6"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <polygon
+              points="6,0 12,6 6,12 0,6"
+              fill="#ffffff"
+              stroke={color}
+              strokeWidth="1.5"
+            />
+          </marker>
+        )}
+      </defs>
       <path
         id={id}
         d={path}
         fill="none"
-        stroke={selected ? '#3b82f6' : '#64748b'}
-        strokeWidth={selected ? 4 : 3}
         strokeLinecap="butt"
         strokeLinejoin="miter"
-        markerEnd={markerEnd}
+        markerStart={`url(#${childMarkerId})`}
+        markerEnd={showParentMarker ? `url(#${parentMarkerId})` : undefined}
         className="react-flow__edge-path"
+        style={{
+          stroke: color,
+          strokeWidth,
+          strokeDasharray: isIdentifying ? undefined : '6 4',
+        }}
       />
       {selected && (
         <EdgeLabelRenderer>

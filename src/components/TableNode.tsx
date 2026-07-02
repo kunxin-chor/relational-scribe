@@ -3,7 +3,7 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 import { tablesAtom, relationshipsAtom, createColumn } from '../atoms/schema';
-import { selectedTableIdAtom, editingNodeIdAtom } from '../atoms/ui';
+import { selectedTableIdAtom, editingNodeIdAtom, highlightedRelationshipIdsAtom } from '../atoms/ui';
 import { MYSQL_DATA_TYPES } from '../utils/mysqlTypes';
 import type { Column, Relationship, Table } from '../types';
 
@@ -21,6 +21,16 @@ function isForeignKeyColumn(table: Table, columnId: string, relationships: Relat
   );
 }
 
+function getForeignKeyRelationshipIds(table: Table, columnId: string, relationships: Relationship[]) {
+  return relationships
+    .filter(
+      (rel) =>
+        rel.sourceTableId === table.id &&
+        rel.mappings.some((m) => m.sourceColumnId === columnId)
+    )
+    .map((rel) => rel.id);
+}
+
 export function TableNode(props: NodeProps<TableNodeType>) {
   const { id, selected } = props;
   const tables = useAtomValue(tablesAtom);
@@ -29,6 +39,7 @@ export function TableNode(props: NodeProps<TableNodeType>) {
   const setRelationships = useSetAtom(relationshipsAtom);
   const setSelectedTableId = useSetAtom(selectedTableIdAtom);
   const setEditingNodeId = useSetAtom(editingNodeIdAtom);
+  const setHighlightedRelationshipIds = useSetAtom(highlightedRelationshipIdsAtom);
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const table = useMemo(
@@ -335,8 +346,22 @@ export function TableNode(props: NodeProps<TableNodeType>) {
             );
           }
           const isFk = isForeignKeyColumn(table, column.id, relationships);
+          const fkRelationshipIds = isFk
+            ? getForeignKeyRelationshipIds(table, column.id, relationships)
+            : [];
           return (
-            <div key={column.id} className={`table-row ${isFk ? 'table-row--fk' : ''}`}>
+            <div
+              key={column.id}
+              className={`table-row ${isFk ? 'table-row--fk' : ''}`}
+              onMouseEnter={
+                isFk
+                  ? () => setHighlightedRelationshipIds(fkRelationshipIds)
+                  : undefined
+              }
+              onMouseLeave={
+                isFk ? () => setHighlightedRelationshipIds([]) : undefined
+              }
+            >
               <div className="table-row-name-cell">
                 {isFk && <span className="table-row-icon">🔗</span>}
                 <span className="table-row-name">{column.name}</span>

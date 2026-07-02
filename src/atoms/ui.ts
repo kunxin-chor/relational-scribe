@@ -7,3 +7,4 @@ export const mappingRelationshipAtom = atom<Relationship | null>(null);
 export const addTableCallbackAtom = atom<((name: string) => void) | null>(null);
 export const editingNodeIdAtom = atom<string | null>(null);
 export const exportPngCallbackAtom = atom<((filename: string) => Promise<void>) | null>(null);
+export const highlightedRelationshipIdsAtom = atom<string[]>([]);
